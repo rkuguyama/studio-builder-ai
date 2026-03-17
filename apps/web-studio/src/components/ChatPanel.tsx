@@ -17,6 +17,261 @@ import {
 import { queryKeys } from "../lib/queryKeys";
 import { useChat } from "../hooks/useChat";
 
+// ---------------------------------------------------------------------------
+// Dyad tag parser — collapses <dyad-write>, <dyad-delete>, etc. into cards
+// ---------------------------------------------------------------------------
+
+interface DyadSegment {
+  type: "text" | "dyad-write" | "dyad-delete" | "dyad-rename" | "dyad-add-dependency" | "dyad-command";
+  content: string;
+  attrs?: Record<string, string>;
+  closed?: boolean;
+}
+
+function parseDyadContent(raw: string): DyadSegment[] {
+  const segments: DyadSegment[] = [];
+  const tagPattern =
+    /<(dyad-write|dyad-delete|dyad-rename|dyad-add-dependency|dyad-command)\b([^>]*)>([\s\S]*?)(?:<\/\1>|$)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagPattern.exec(raw)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", content: raw.slice(lastIndex, match.index) });
+    }
+    const attrs: Record<string, string> = {};
+    const attrPattern = /(\w+)="([^"]*)"/g;
+    let attrMatch: RegExpExecArray | null;
+    while ((attrMatch = attrPattern.exec(match[2])) !== null) {
+      attrs[attrMatch[1]] = attrMatch[2];
+    }
+    const closed = raw.includes(`</${match[1]}>`, match.index);
+    segments.push({
+      type: match[1] as DyadSegment["type"],
+      content: match[3],
+      attrs,
+      closed,
+    });
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Handle unclosed opening tags during streaming
+  const unclosedPattern =
+    /<(dyad-write|dyad-delete|dyad-rename|dyad-add-dependency|dyad-command)\b([^>]*)>([\s\S]*)$/;
+  const tail = raw.slice(lastIndex);
+  const unclosed = unclosedPattern.exec(tail);
+  if (unclosed) {
+    const before = tail.slice(0, unclosed.index);
+    if (before) segments.push({ type: "text", content: before });
+    const attrs: Record<string, string> = {};
+    const attrPattern = /(\w+)="([^"]*)"/g;
+    let attrMatch: RegExpExecArray | null;
+    while ((attrMatch = attrPattern.exec(unclosed[2])) !== null) {
+      attrs[attrMatch[1]] = attrMatch[2];
+    }
+    segments.push({
+      type: unclosed[1] as DyadSegment["type"],
+      content: unclosed[3],
+      attrs,
+      closed: false,
+    });
+  } else if (tail) {
+    segments.push({ type: "text", content: tail });
+  }
+
+  return segments;
+}
+
+function DyadMessageContent({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
+  const segments = React.useMemo(() => parseDyadContent(content), [content]);
+  const hasAnyDyadTag = segments.some((s) => s.type !== "text");
+
+  if (!hasAnyDyadTag) {
+    return <ReactMarkdown>{content}</ReactMarkdown>;
+  }
+
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (seg.type === "text") {
+          const trimmed = seg.content.trim();
+          if (!trimmed) return null;
+          return <ReactMarkdown key={i}>{trimmed}</ReactMarkdown>;
+        }
+
+        if (seg.type === "dyad-write") {
+          const filePath = seg.attrs?.path ?? "file";
+          const description = seg.attrs?.description;
+          const isPending = !seg.closed && isStreaming;
+          return (
+            <details key={i} style={cardStyles.card}>
+              <summary style={cardStyles.summary}>
+                <span style={cardStyles.icon}>{isPending ? "⟳" : "✓"}</span>
+                <span style={cardStyles.path}>{filePath}</span>
+                {isPending && <span style={cardStyles.badge}>Building…</span>}
+              </summary>
+              {description && (
+                <div style={cardStyles.description}>{description}</div>
+              )}
+              <pre style={cardStyles.code}>{seg.content}</pre>
+            </details>
+          );
+        }
+
+        if (seg.type === "dyad-delete") {
+          return (
+            <div key={i} style={cardStyles.deleteCard}>
+              <span style={cardStyles.icon}>✕</span>
+              <span>Deleted: {seg.attrs?.path ?? "file"}</span>
+            </div>
+          );
+        }
+
+        if (seg.type === "dyad-rename") {
+          return (
+            <div key={i} style={cardStyles.renameCard}>
+              <span style={cardStyles.icon}>↻</span>
+              <span>Renamed: {seg.attrs?.from} → {seg.attrs?.to}</span>
+            </div>
+          );
+        }
+
+        if (seg.type === "dyad-add-dependency") {
+          return (
+            <div key={i} style={cardStyles.depCard}>
+              <span style={cardStyles.icon}>+</span>
+              <span>Installing: {seg.attrs?.packages ?? seg.content}</span>
+            </div>
+          );
+        }
+
+        if (seg.type === "dyad-command") {
+          return (
+            <div key={i} style={cardStyles.commandCard}>
+              <span style={cardStyles.icon}>▶</span>
+              <span>Command: {seg.attrs?.type ?? seg.content}</span>
+            </div>
+          );
+        }
+
+        return null;
+      })}
+    </>
+  );
+}
+
+const cardStyles: Record<string, React.CSSProperties> = {
+  card: {
+    margin: "0.5rem 0",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    backgroundColor: "#0d1117",
+    overflow: "hidden",
+  },
+  summary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.5rem 0.75rem",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#e6edf3",
+    backgroundColor: "#161b22",
+    listStyle: "none",
+    userSelect: "none",
+  },
+  icon: {
+    fontSize: 14,
+    flexShrink: 0,
+  },
+  path: {
+    fontFamily: "monospace",
+    fontSize: 12,
+    color: "#58a6ff",
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  badge: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#f0883e",
+    border: "1px solid #f0883e",
+    borderRadius: 4,
+    padding: "1px 6px",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    animation: "pulse 1.5s infinite",
+  },
+  description: {
+    fontSize: 12,
+    color: "#8b949e",
+    padding: "0.4rem 0.75rem",
+    borderBottom: "1px solid #21262d",
+  },
+  code: {
+    margin: 0,
+    padding: "0.6rem 0.75rem",
+    fontSize: 11,
+    fontFamily: "monospace",
+    color: "#c9d1d9",
+    overflow: "auto",
+    maxHeight: 400,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-all",
+  },
+  deleteCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.4rem 0.75rem",
+    margin: "0.3rem 0",
+    fontSize: 12,
+    color: "#f85149",
+    backgroundColor: "#1c1014",
+    border: "1px solid #3d1116",
+    borderRadius: 6,
+  },
+  renameCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.4rem 0.75rem",
+    margin: "0.3rem 0",
+    fontSize: 12,
+    color: "#d2a8ff",
+    backgroundColor: "#16121c",
+    border: "1px solid #2d1f40",
+    borderRadius: 6,
+  },
+  depCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.4rem 0.75rem",
+    margin: "0.3rem 0",
+    fontSize: 12,
+    color: "#3fb950",
+    backgroundColor: "#0e1a13",
+    border: "1px solid #1a3626",
+    borderRadius: 6,
+  },
+  commandCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.4rem 0.75rem",
+    margin: "0.3rem 0",
+    fontSize: 12,
+    color: "#f0883e",
+    backgroundColor: "#1a1508",
+    border: "1px solid #3d2e0a",
+    borderRadius: 6,
+  },
+};
+
 interface ChatPanelProps {
   appId: number | null;
   chatId: number | null;
@@ -317,7 +572,7 @@ export function ChatPanel({
         )}
         {isLoading && <p style={styles.status}>Loading messages...</p>}
 
-        {messages.map((msg) => (
+        {messages.map((msg, idx) => (
           <div
             key={msg.id}
             style={{
@@ -332,7 +587,10 @@ export function ChatPanel({
             </div>
             <div style={styles.content}>
               {msg.role === "assistant" ? (
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <DyadMessageContent
+                  content={msg.content}
+                  isStreaming={isStreaming && idx === messages.length - 1}
+                />
               ) : (
                 msg.content
               )}

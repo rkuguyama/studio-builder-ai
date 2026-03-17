@@ -9,6 +9,37 @@ import log from "electron-log";
 
 const logger = log.scope("createFromTemplate");
 
+/**
+ * Resolve the scaffold directory, trying multiple candidate paths.
+ *
+ * In development `__dirname` sits inside `src/ipc/handlers/` and
+ * `../../scaffold` points directly at `<repo>/scaffold/`.
+ *
+ * In a packaged Electron app the compiled JS lands in `.vite/build/`
+ * inside the asar, so `../../scaffold` may miss.  We therefore also
+ * check `app.getAppPath() + "/scaffold"` which always resolves to the
+ * asar root, plus a few other common layouts.
+ */
+function resolveScaffoldDir(): string {
+  const candidates = [
+    path.join(__dirname, "..", "..", "scaffold"),
+    path.join(app.getAppPath(), "scaffold"),
+    path.resolve(app.getAppPath(), "..", "scaffold"),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      logger.info(`Scaffold directory found at: ${candidate}`);
+      return candidate;
+    }
+    logger.info(`Scaffold directory NOT found at: ${candidate}`);
+  }
+
+  throw new Error(
+    `Could not find scaffold directory. Tried: ${candidates.join(", ")}`,
+  );
+}
+
 export async function createFromTemplate({
   fullAppPath,
 }: {
@@ -18,10 +49,8 @@ export async function createFromTemplate({
   const templateId = settings.selectedTemplateId;
 
   if (templateId === "react") {
-    await copyDirectoryRecursive(
-      path.join(__dirname, "..", "..", "scaffold"),
-      fullAppPath,
-    );
+    const scaffoldDir = resolveScaffoldDir();
+    await copyDirectoryRecursive(scaffoldDir, fullAppPath);
     return;
   }
 
