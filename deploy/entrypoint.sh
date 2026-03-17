@@ -5,7 +5,7 @@ echo "==> Starting Studio AI Builder (headless)"
 
 # Generate runtime config as a separate JS file.
 # This avoids brittle sed replacements and safely handles special characters.
-RUNTIME_CONFIG_JSON="$(node -e 'const cfg={BRIDGE_URL:process.env.BRIDGE_URL||\"http://localhost:4310\",BRIDGE_TOKEN:process.env.DYAD_WEB_BRIDGE_TOKEN||\"\"}; process.stdout.write(JSON.stringify(cfg));')"
+RUNTIME_CONFIG_JSON="$(node -e 'const cfg={BRIDGE_URL:process.env.BRIDGE_URL||"http://localhost:4310",BRIDGE_TOKEN:process.env.DYAD_WEB_BRIDGE_TOKEN||""}; process.stdout.write(JSON.stringify(cfg));')"
 printf 'window.__RUNTIME_CONFIG__ = %s;\n' "$RUNTIME_CONFIG_JSON" > /data/web-studio/runtime-config.js
 
 # Ensure data directories exist
