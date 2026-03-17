@@ -1,0 +1,68 @@
+---
+alwaysApply: true
+---
+
+# Architecture Rule — System Boundaries
+
+Always preserve clear architectural boundaries.
+
+## Main domains
+1. Builder / Studio
+2. Control Plane
+3. Runtime Plane
+4. Gateway / Exposure
+5. Local Integration Plane
+
+## Required service separation
+- The frontend must not directly manage Kubernetes resources
+- The control plane orchestrates deployments through a deployer service
+- The runtime plane runs user workloads, not core SaaS admin logic
+- Kong exposure must be managed through deployment metadata and gateway services
+- OpenClaw integration must remain local-first and isolated from public cloud exposure
+
+## Monorepo structure
+Use this baseline structure:
+
+apps/
+  web-studio/
+  desktop-builder/
+  control-plane-api/
+  deployer-service/
+  runtime-agent/
+  runtime-app-base/
+  gateway-admin-api/
+  openclaw-adapter/
+  docs-site/
+
+packages/
+  ui/
+  shared-types/
+  sdk/
+  deployment-spec/
+  templates/
+  auth/
+  logging/
+  telemetry/
+  billing/
+  secrets/
+  tool-registry/
+  model-providers/
+
+infra/
+  terraform/
+  kubernetes/
+
+## Architectural constraints
+- Shared logic belongs in packages/, not duplicated in apps/
+- API contracts must be typed and shared through packages/shared-types or sdk
+- Deployment specs must be schema-driven
+- Runtime workloads must be stateless by default unless explicitly designed otherwise
+- Environment-specific behavior must be config-driven, not hardcoded
+
+## Design principles
+- API-first
+- schema-first
+- tenant-aware by design
+- secure by default
+- observable by default
+- modular, replaceable services

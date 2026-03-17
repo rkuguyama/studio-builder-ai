@@ -1,0 +1,22 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
+  "compilerOptions": {
+    "paths": {
+      "*": ["./*"],
+      "@/*": ["./src/*"],
+      "@platform/shared-types": ["./packages/shared-types/src/index.ts"],
+      "@platform/shared-types/*": ["./packages/shared-types/src/*"],
+      "@platform/sdk": ["./packages/sdk/src/index.ts"],
+      "@platform/sdk/*": ["./packages/sdk/src/*"]
+    },
+    "skipLibCheck": true
+  }
+}

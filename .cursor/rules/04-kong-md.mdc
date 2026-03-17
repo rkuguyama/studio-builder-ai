@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+---
+
+# Kong Rule — Exposure and Route Management
+
+Kong is the platform gateway for deployed agents/apps.
+
+## Route model
+Every public deployment route must be derived from persisted deployment metadata.
+
+## Exposure rules
+- Public exposure must be explicit, never implicit
+- Preview routes and production routes must be distinguishable
+- Route generation must be deterministic
+- Protected routes must support auth policy assignment
+
+## Gateway resources
+Prefer Kubernetes-native route definitions that Kong can reconcile.
+
+## Required route metadata
+- route id
+- deployment id
+- tenant id
+- environment
+- visibility
+- auth mode
+- rate limit profile
+- hostname/path mapping
+
+## Auth modes
+Support these concepts in the domain model:
+- public
+- api_key
+- jwt
+- oidc (future-ready)
+
+## Safety
+- Never create public wildcard routes by default
+- Never expose admin/internal services through Kong
+- Enforce explicit allowlists for management endpoints
+
+## Naming
+Route names must be stable, readable, and traceable back to deployment records

@@ -1,0 +1,58 @@
+---
+alwaysApply: true
+---
+
+# Kubernetes Rule — Deployment Standards
+
+All deployable runtimes must follow platform deployment conventions.
+
+## Deployment unit
+Each deployment should be representable through a typed deployment spec.
+
+## Standard Kubernetes resources
+Prefer the following set:
+- Deployment
+- Service
+- ConfigMap
+- Secret reference
+- Ingress or HTTPRoute
+- HorizontalPodAutoscaler
+- NetworkPolicy
+
+## Metadata
+All resources must include standard labels:
+- app.kubernetes.io/name
+- app.kubernetes.io/instance
+- app.kubernetes.io/component
+- app.kubernetes.io/managed-by
+- platform.io/project-id
+- platform.io/deployment-id
+- platform.io/environment
+- platform.io/tenant-id
+
+## Container standards
+- Expose a health endpoint
+- Log to stdout/stderr
+- Read config from env/config files
+- Do not rely on writable local disk unless explicitly required
+
+## Runtime profiles
+Each deployment must support a runtime profile such as:
+- small
+- medium
+- large
+
+Runtime profile should control:
+- replicas
+- requests/limits
+- autoscaling thresholds
+- timeout defaults
+
+## Release behavior
+- Prefer rolling deployments first
+- Canary/blue-green is a future enhancement unless explicitly requested
+
+## Forbidden patterns
+- Do not generate ad hoc kubectl shell scripts as primary deployment logic
+- Do not hardcode cluster names or namespaces in application logic
+- Do not embed infrastructure credentials in deployer code

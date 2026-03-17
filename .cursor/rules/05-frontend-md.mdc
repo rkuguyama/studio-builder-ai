@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
+
+# Frontend Rule — UI and DX Standards
+
+The product must feel structured, professional, and builder-oriented.
+
+## Frontend priorities
+- clarity over visual complexity
+- strong information architecture
+- fast navigation between projects, agents, apps, deployments
+- schema-driven forms where practical
+- deployment state always visible
+
+## Main UX entities
+- organization
+- project
+- environment
+- agent
+- app
+- deployment
+- route
+- secret
+- template
+
+## UI requirements
+- form validation must be user-friendly
+- destructive actions must require confirmation
+- loading and empty states must be explicit
+- error states must be actionable
+- logs/status should be readable and filterable
+
+## Code standards
+- use TypeScript strictly
+- prefer reusable components from shared ui package
+- avoid business logic in presentation components
+- colocate component tests when useful
+- use server-state patterns consistently
+
+## Forbidden patterns
+- giant page components with mixed business logic
+- direct fetch calls scattered across UI
+- duplicated form schemas
+- inconsistent naming between backend and frontend models

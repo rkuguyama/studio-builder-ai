@@ -1,0 +1,51 @@
+---
+alwaysApply: true
+---
+
+# API Rule — Contract and Service Standards
+
+All backend services must follow API-first conventions.
+
+## API design
+- Use consistent resource naming
+- Use versioned APIs
+- Prefer explicit DTOs
+- Use schema validation for request/response bodies
+- Return typed error objects
+
+## Core resources
+- organizations
+- memberships
+- projects
+- agents
+- apps
+- environments
+- deployments
+- routes
+- secrets
+- runtime-profiles
+- model-configs
+- tool-configs
+
+## Error handling
+Use structured error responses:
+- code
+- message
+- details (optional)
+- requestId
+
+## Validation
+All inbound payloads must be validated with a schema library.
+Never trust raw request input.
+
+## API boundaries
+- controllers handle request/response mapping
+- services handle business logic
+- repositories handle persistence
+- infrastructure clients wrap external systems
+
+## Forbidden patterns
+- direct SQL in controllers
+- domain logic inside route handlers
+- implicit any in API types
+- untyped external service responses

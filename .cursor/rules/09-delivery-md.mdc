@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+
+# Delivery Rule — How Cursor Should Respond
+
+When implementing tasks for this repository:
+
+## Always do this first
+- restate the objective briefly
+- identify affected apps/packages
+- propose the smallest correct implementation path
+- call out assumptions
+
+## Then execute in this order
+1. types/contracts
+2. schema/model
+3. service logic
+4. API/UI wiring
+5. tests
+6. docs/comments only where useful
+
+## Output style
+- produce production-oriented code
+- avoid placeholder architecture unless explicitly requested
+- avoid fake integrations
+- mark TODOs only when truly necessary
+- prefer complete vertical slices over superficial scaffolding
+
+## If blocked
+- do not hand-wave
+- state exactly what is missing
+- offer the next best implementation with clear boundaries
+
+## Quality bar
+Every implementation should be:
+- typed
+- testable
+- secure by default
+- aligned with the architecture rules

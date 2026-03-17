@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+---
+
+# Delivery Rule — How Cursor Should Work In This Repo
+
+This repository already contains a working codebase.
+
+## Always do this first
+- inspect current structure before proposing changes
+- restate the objective briefly
+- identify affected existing modules/files
+- propose the smallest correct refactor path
+- call out assumptions and migration risks
+
+## Preferred execution order
+1. inspect existing code
+2. map reusable modules
+3. define minimal target changes
+4. refactor types/contracts
+5. refactor services/components
+6. wire new capability
+7. add/update tests
+8. update docs only where useful
+
+## Output style
+- prefer incremental refactors over full rewrites
+- produce production-oriented code
+- avoid parallel unused scaffolding
+- do not invent architecture inconsistent with the repo
+- keep changes easy to review
+
+## If blocked
+- state exactly what existing code needs inspection
+- propose the next safe incremental step
+- do not jump to a rewrite unless necessary
+
+## Quality bar
+Every implementation should be:
+- typed
+- testable
+- secure by default
+- aligned with the current repo structure
+- clearly migrated from the existing codebase toward the target architecture

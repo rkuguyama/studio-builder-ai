@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+---
+
+# Product Rule — What We Are Building
+
+We are building a Kubernetes-native SaaS platform for creating, testing, deploying, and managing multi-functional AI agents and AI-powered apps.
+
+## Product goals
+- Local-first creation experience
+- Cloud SaaS for project management and deployment
+- Deploy agents/apps to Kubernetes
+- Expose deployments through Kong
+- Support Oracle Cloud as the primary infrastructure target
+- Support a local companion app integrated with OpenClaw for local preview/testing
+
+## Core product capabilities
+- Create agents and apps
+- Configure models, tools, secrets, environments, runtime profiles
+- Test locally
+- Sync local projects to cloud
+- Deploy to Kubernetes
+- Publish endpoints/apps behind Kong
+- Observe deployment status, logs, and runtime health
+
+## What is out of scope for MVP
+- Marketplace
+- Full no-code workflow marketplace
+- Enterprise SSO
+- Multi-region failover
+- Arbitrary unrestricted code execution
+- Publicly exposed raw OpenClaw gateways
+- Complex plugin ecosystem
+
+## Product language
+Use these terms consistently:
+- "Studio" = builder UI
+- "Control Plane" = SaaS backend
+- "Runtime Plane" = deployed workloads in Kubernetes
+- "Deployment" = a versioned runtime release
+- "Project" = top-level user workspace object
+- "Agent" = AI behavior-first runtime
+- "App" = user-facing application/runtime
+- "Environment" = dev/staging/prod context
+- "Route" = public or internal endpoint exposed via Kong
+
+## Non-goals
+Do not position the product as merely a clone or branded fork of another app.
+This is a new platform with local-first authoring and cloud-native deployment.

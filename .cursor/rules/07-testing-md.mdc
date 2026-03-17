@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+
+# Testing Rule — Quality Gates
+
+Generated code must include tests appropriate to the change.
+
+## Minimum expectations
+- utilities: unit tests
+- services: unit tests and/or integration tests
+- APIs: contract/integration tests
+- critical user journeys: e2e tests
+
+## Priority user flows
+- sign in
+- create project
+- create agent/app
+- save configuration
+- deploy
+- view deployment status
+- access published route
+
+## Test qualities
+- tests should be deterministic
+- avoid brittle selectors in e2e
+- avoid excessive mocking when integration tests are more valuable
+- cover validation and authorization failures
+
+## Forbidden patterns
+- merging critical backend code with zero tests
+- snapshot-heavy frontend testing without behavioral assertions
+- fake passing tests that do not assert meaningful behavior

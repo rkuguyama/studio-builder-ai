@@ -1,0 +1,38 @@
+---
+alwaysApply: true
+---
+
+# Brand Migration Rule — Rename and Reposition
+
+This codebase must be migrated away from the original branding and repositioned as a new product.
+
+## Required tasks during migration
+- identify all occurrences of the old product name
+- identify logo/icon/metadata references
+- identify package names, titles, descriptions, docs strings, telemetry labels, URLs, and environment variables tied to the old brand
+- replace them safely and consistently
+
+## Scope of branding review
+Check at minimum:
+- package.json files
+- app window titles
+- frontend labels
+- docs/readmes
+- favicon/logo/icon assets
+- environment variables
+- metadata/config files
+- internal constants
+- comments only if they leak product identity externally
+
+## Migration constraints
+- do not blindly replace strings without understanding context
+- do not break imports/package references during rename
+- prefer staged renaming where necessary
+- preserve technical behavior while changing branding
+
+## Output expectation
+For each branding task, provide:
+- files affected
+- rename strategy
+- risk of breakage
+- safe implementation order

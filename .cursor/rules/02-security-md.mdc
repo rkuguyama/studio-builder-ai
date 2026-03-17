@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+---
+
+# Security Rule — Mandatory Constraints
+
+Security is not optional. All generated code must follow these constraints.
+
+## Tenant isolation
+- All resources must be tenant-aware
+- Never mix tenant data implicitly
+- Every persisted business object must include tenant/org ownership
+- Authorization must be enforced server-side
+
+## Secrets
+- Never store secrets in plain project JSON
+- Never commit secrets to source control
+- Use secret references instead of raw values where possible
+- Mask sensitive values in logs, errors, and UI responses
+
+## Kubernetes workloads
+- Use non-root containers by default
+- Apply CPU/memory requests and limits
+- Prefer read-only root filesystem when possible
+- Avoid privileged containers
+- Avoid host mounts unless explicitly approved
+- Use dedicated service accounts with minimal permissions
+
+## OpenClaw integration
+- Assume OpenClaw is local-only by default
+- Do not expose raw local gateways publicly
+- Require token/auth handshake for local integration
+- Dangerous tools must be opt-in only
+- Any shell/file/network capability must be treated as high-risk
+
+## Logging
+- Never log tokens, passwords, API keys, raw credentials, or sensitive payloads
+- Truncate or mask sensitive request/response data
+
+## Input handling
+- Validate all input at service boundaries
+- Reject malformed input early
+- Use schema validation for external payloads
+
+## Prohibited shortcuts
+- No mock auth in production code paths
+- No hardcoded secrets
+- No wildcard CORS in protected services
+- No "temporary" bypasses without explicit TODO and explanation

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studio AI Builder</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #0d1117;
+      }
+      #root {
+        height: 100%;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Runtime config: replace this script block at deploy time via nginx sub_filter
+         or a templating step so the app picks up the correct bridge URL/token.
+         Example: window.__RUNTIME_CONFIG__ = { BRIDGE_URL: "https://api.example.com" }; -->
+    <script>window.__RUNTIME_CONFIG__ = window.__RUNTIME_CONFIG__ || {};</script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+---
+alwaysApply: true
+---
+
+# Existing Codebase Rule — Dyad OSS Adaptation
+
+This repository already contains the Dyad open-source codebase at the root.
+
+We are not starting from scratch.
+We must evolve the current codebase into a new product.
+
+## Primary objective
+Adapt the existing OSS codebase into a platform for:
+- multi-functional AI agents/apps
+- local-first building
+- SaaS synchronization and deployment
+- Kubernetes runtime deployment
+- Kong-based exposure
+- OpenClaw local integration
+
+## Required working mode
+Before creating new structures, always:
+1. inspect the current repository structure
+2. identify reusable modules/components
+3. identify branding references
+4. identify architecture assumptions from the existing app
+5. propose an incremental migration plan
+
+## Reuse policy
+Prefer:
+- refactoring
+- extracting shared modules
+- renaming existing modules
+- extending existing app architecture
+
+Avoid:
+- replacing working code unnecessarily
+- duplicating current capabilities in parallel folders
+- introducing a second architecture that conflicts with the current root structure
+
+## Migration principle
+All major changes should follow:
+- inspect
+- map
+- preserve reusable pieces
+- isolate risky pieces
+- refactor incrementally
+
+## Required outputs when modifying the repo
+Always state:
+- what existing code is being reused
+- what existing code is being replaced
+- what existing code is being left untouched for now
+- what new modules are introduced

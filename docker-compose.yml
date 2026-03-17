@@ -1,0 +1,30 @@
+services:
+  studio:
+    build: .
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DYAD_HEADLESS: "1"
+      DYAD_DATA_DIR: /data/db
+      DYAD_APPS_DIR: /data/apps
+      DYAD_WEB_BRIDGE_TOKEN: "${DYAD_WEB_BRIDGE_TOKEN:-changeme}"
+      DYAD_WEB_BRIDGE_PORT: "4310"
+      DYAD_WEB_BRIDGE_HOST: "0.0.0.0"
+      DYAD_RATE_LIMIT_PER_MINUTE: "200"
+      # Set to the public URL of this server for correct preview/SSE URLs
+      BRIDGE_URL: "${BRIDGE_URL:-http://localhost}"
+    volumes:
+      - studio-data:/data/db
+      - studio-apps:/data/apps
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4310/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  studio-data:
+  studio-apps:

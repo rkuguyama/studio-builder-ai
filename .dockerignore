@@ -1,0 +1,14 @@
+node_modules/
+out/
+.vite/
+dist/
+*.log
+.env
+.env.*
+e2e-tests/
+.git/
+.cursor/
+.agents/
+.github/
+*.md
+!README.md
