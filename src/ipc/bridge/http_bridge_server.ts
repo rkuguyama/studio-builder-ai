@@ -10,6 +10,7 @@ import {
   handlePreviewRequest,
   handlePreviewUpgrade,
 } from "./preview_proxy";
+import { handleExportRequest, parseExportPath } from "./export_zip";
 import { RateLimiter } from "./rate_limiter";
 
 const logger = log.scope("http_bridge_server");
@@ -115,6 +116,17 @@ export function startHttpBridgeServer(options: BridgeServerOptions) {
           return;
         }
         handlePreviewRequest(request, response, preview.appId, preview.subPath);
+        return;
+      }
+
+      // Zip export — stream the app folder as a .zip download
+      const exportInfo = parseExportPath(url);
+      if (exportInfo) {
+        if (!isAuthorized(request, options.authToken)) {
+          sendJson(response, 401, { ok: false, error: "Unauthorized" });
+          return;
+        }
+        await handleExportRequest(response, exportInfo.appId);
         return;
       }
 

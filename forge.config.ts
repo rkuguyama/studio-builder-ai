@@ -39,6 +39,30 @@ const ignore = (file: string) => {
   if (file.startsWith("/node_modules/html-to-image")) {
     return false;
   }
+  if (file.startsWith("/node_modules/archiver")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/zip-stream")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/compress-commons")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/crc-32")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/crc32-stream")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/archiver-utils")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/readdir-glob")) {
+    return false;
+  }
+  if (file.startsWith("/node_modules/lazystream")) {
+    return false;
+  }
   if (file.startsWith("/node_modules/better-sqlite3")) {
     return false;
   }

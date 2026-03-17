@@ -8,6 +8,7 @@ interface AppBuilderProps {
   appId: number | null;
   chatId: number | null;
   onSessionChange?: (appId: number, chatId: number) => void;
+  onNewProject?: () => void;
 }
 
 function createAppNameFromPrompt(prompt: string): string {
@@ -21,7 +22,7 @@ function createAppNameFromPrompt(prompt: string): string {
   return `app-${Date.now()}`;
 }
 
-export function AppBuilder({ appId, chatId, onSessionChange }: AppBuilderProps) {
+export function AppBuilder({ appId, chatId, onSessionChange, onNewProject }: AppBuilderProps) {
   const [currentAppId, setCurrentAppId] = React.useState<number | null>(appId);
   const [currentChatId, setCurrentChatId] = React.useState<number | null>(chatId);
   const [startupError, setStartupError] = React.useState<string | null>(null);
@@ -78,12 +79,7 @@ export function AppBuilder({ appId, chatId, onSessionChange }: AppBuilderProps) 
             appId={currentAppId}
             chatId={currentChatId}
             onSubmitWithoutChat={startFromPrompt}
-            onChatChange={(newChatId) => {
-              setCurrentChatId(newChatId);
-              if (currentAppId !== null) {
-                onSessionChange?.(currentAppId, newChatId);
-              }
-            }}
+            onNewProject={onNewProject}
           />
         </div>
         <div style={styles.divider} />

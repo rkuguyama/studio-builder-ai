@@ -7,6 +7,7 @@ import {
   clearLogs,
   createPlan,
   editAppFile,
+  exportAppZipUrl,
   getApp,
   getAppEnvVars,
   getLatestSecurityReview,
@@ -195,6 +196,13 @@ export function WorkspacePanel({ appId, chatId }: WorkspacePanelProps) {
               >
                 Refresh
               </button>
+              <a
+                href={exportAppZipUrl(appId)}
+                download
+                style={{ ...styles.smallButton, textDecoration: "none", display: "inline-block" }}
+              >
+                Export .zip
+              </a>
             </div>
             {previewUrl ? (
               <iframe

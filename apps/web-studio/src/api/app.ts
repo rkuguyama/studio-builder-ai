@@ -1,5 +1,5 @@
 import type { App, ListedApp } from "@platform/shared-types";
-import { invokeChannel } from "./bridge";
+import { invokeChannel, API_BASE, API_TOKEN } from "./bridge";
 
 export interface PreviewUrlResult {
   running: boolean;
@@ -82,4 +82,9 @@ export async function searchAppFiles(
     appId,
     query,
   });
+}
+
+export function exportAppZipUrl(appId: number): string {
+  const tokenParam = API_TOKEN ? `?token=${encodeURIComponent(API_TOKEN)}` : "";
+  return `${API_BASE}/export/${appId}.zip${tokenParam}`;
 }

@@ -54,6 +54,7 @@ function StudioPage() {
             search: { chatId: String(chatId) },
           });
         }}
+        onNewProject={() => navigate({ to: "/" })}
       />
     </main>
   );
@@ -64,6 +65,7 @@ function StudioPage() {
 // ---------------------------------------------------------------------------
 
 function AppBuilderPage() {
+  const navigate = useNavigate();
   const { appId } = useParams({ from: "/app/$appId" });
   const searchParams = new URLSearchParams(window.location.search);
   const chatIdParam = searchParams.get("chatId");
@@ -75,6 +77,7 @@ function AppBuilderPage() {
     <AppBuilder
       appId={Number.isFinite(parsedAppId) ? parsedAppId : null}
       chatId={chatId}
+      onNewProject={() => navigate({ to: "/" })}
     />
   );
 }

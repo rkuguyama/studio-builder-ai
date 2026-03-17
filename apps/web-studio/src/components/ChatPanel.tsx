@@ -3,12 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import {
   approveProposal,
-  createChat,
-  deleteChat,
   getLanguageModelProviders,
   getLanguageModelsByProviders,
   getProposal,
-  getChats,
   getUserSettings,
   rejectProposal,
   setUserSettings,
@@ -276,14 +273,14 @@ interface ChatPanelProps {
   appId: number | null;
   chatId: number | null;
   onSubmitWithoutChat?: (prompt: string) => Promise<void>;
-  onChatChange?: (chatId: number) => void;
+  onNewProject?: () => void;
 }
 
 export function ChatPanel({
   appId,
   chatId,
   onSubmitWithoutChat,
-  onChatChange,
+  onNewProject,
 }: ChatPanelProps) {
   const queryClient = useQueryClient();
   const {
@@ -301,7 +298,6 @@ export function ChatPanel({
   const [isBootstrapping, setIsBootstrapping] = React.useState(false);
   const [bootstrapError, setBootstrapError] = React.useState<string | null>(null);
   const [showModelSettings, setShowModelSettings] = React.useState(false);
-  const [showHistory, setShowHistory] = React.useState(false);
   const [editingProviderId, setEditingProviderId] = React.useState<string | null>(
     null,
   );
@@ -324,12 +320,6 @@ export function ChatPanel({
   const modelsByProviderQuery = useQuery({
     queryKey: queryKeys.settings.modelsByProvider,
     queryFn: getLanguageModelsByProviders,
-  });
-
-  const chatsQuery = useQuery({
-    queryKey: queryKeys.chat.list(appId ?? undefined),
-    queryFn: () => getChats(appId ?? undefined),
-    enabled: appId !== null,
   });
 
   const proposalQuery = useQuery({
@@ -356,30 +346,6 @@ export function ChatPanel({
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.user });
       queryClient.invalidateQueries({
         queryKey: queryKeys.settings.modelsByProvider,
-      });
-    },
-  });
-
-  const createChatMutation = useMutation({
-    mutationFn: async () => {
-      if (appId === null) {
-        throw new Error("Cannot create chat without app");
-      }
-      return createChat(appId);
-    },
-    onSuccess: (newChatId) => {
-      onChatChange?.(newChatId);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chat.list(appId ?? undefined),
-      });
-    },
-  });
-
-  const deleteChatMutation = useMutation({
-    mutationFn: deleteChat,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chat.list(appId ?? undefined),
       });
     },
   });
@@ -513,53 +479,15 @@ export function ChatPanel({
       <div style={styles.chatHeader}>
         <div style={styles.chatHeaderTitle}>Chat</div>
         <div style={styles.chatHeaderActions}>
-          {appId !== null && (
-            <button
-              type="button"
-              style={styles.inlineButton}
-              onClick={() => createChatMutation.mutate()}
-              disabled={createChatMutation.isPending}
-            >
-              New Chat
-            </button>
-          )}
           <button
             type="button"
             style={styles.inlineButton}
-            onClick={() => setShowHistory((v) => !v)}
+            onClick={() => onNewProject?.()}
           >
-            {showHistory ? "Hide History" : "History"}
+            + New Project
           </button>
         </div>
       </div>
-      {showHistory && (
-        <div style={styles.historyPanel}>
-          {(chatsQuery.data ?? []).map((chat) => (
-            <div key={chat.id} style={styles.historyRow}>
-              <button
-                type="button"
-                style={{
-                  ...styles.historyItem,
-                  ...(chat.id === chatId ? styles.historyItemActive : {}),
-                }}
-                onClick={() => onChatChange?.(chat.id)}
-              >
-                {chat.title ?? `Chat #${chat.id}`}
-              </button>
-              <button
-                type="button"
-                style={styles.historyDelete}
-                onClick={() => deleteChatMutation.mutate(chat.id)}
-              >
-                Delete
-              </button>
-            </div>
-          ))}
-          {chatsQuery.data?.length === 0 && (
-            <div style={styles.status}>No chats yet.</div>
-          )}
-        </div>
-      )}
       <div style={styles.messageList}>
         {!chatId && (
           <div style={styles.welcomeCard}>
@@ -841,45 +769,6 @@ const styles: Record<string, React.CSSProperties> = {
   chatHeaderActions: {
     display: "flex",
     gap: "0.4rem",
-  },
-  historyPanel: {
-    borderBottom: "1px solid #30363d",
-    backgroundColor: "#0f141b",
-    padding: "0.5rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.3rem",
-    maxHeight: 180,
-    overflow: "auto",
-  },
-  historyRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.4rem",
-  },
-  historyItem: {
-    flex: 1,
-    textAlign: "left",
-    backgroundColor: "#161b22",
-    border: "1px solid #30363d",
-    color: "#e6edf3",
-    borderRadius: 6,
-    padding: "0.3rem 0.5rem",
-    fontSize: 12,
-    cursor: "pointer",
-  },
-  historyItemActive: {
-    borderColor: "#1f6feb",
-    backgroundColor: "#0f2547",
-  },
-  historyDelete: {
-    padding: "0.25rem 0.5rem",
-    borderRadius: 6,
-    border: "1px solid #30363d",
-    backgroundColor: "#2d1218",
-    color: "#f85149",
-    fontSize: 11,
-    cursor: "pointer",
   },
   messageList: {
     flex: 1,
