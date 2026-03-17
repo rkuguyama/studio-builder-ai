@@ -1,6 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getChat, sendChatMessage, type ChatMessage } from "../api";
+import {
+  cancelChatStream,
+  getChat,
+  sendChatMessage,
+  type ChatAttachmentPayload,
+  type ChatMessage,
+} from "../api";
+import { queryKeys } from "../lib/queryKeys";
 import { useEventListener } from "./useEventStream";
 
 interface ChatChunkPayload {
@@ -28,11 +35,13 @@ export function useChat(chatId: number | null) {
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastPrompt, setLastPrompt] = useState<string | null>(null);
+  const [queuedPrompts, setQueuedPrompts] = useState<string[]>([]);
   const chatIdRef = useRef(chatId);
   chatIdRef.current = chatId;
 
   const chatQuery = useQuery({
-    queryKey: ["chat", chatId],
+    queryKey: queryKeys.chat.detail(chatId),
     queryFn: () => getChat(chatId!),
     enabled: chatId !== null,
   });
@@ -76,7 +85,9 @@ export function useChat(chatId: number | null) {
     setIsStreaming(false);
     setStreamingMessageId(null);
     setStreamingContent("");
-    queryClient.invalidateQueries({ queryKey: ["chat", chatIdRef.current] });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.chat.detail(chatIdRef.current),
+    });
   });
 
   useEventListener("chat:response:error", (payload) => {
@@ -87,9 +98,10 @@ export function useChat(chatId: number | null) {
   });
 
   const sendMessage = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, attachments?: ChatAttachmentPayload[]) => {
       if (!chatId) return;
       setError(null);
+      setLastPrompt(prompt);
 
       // Optimistically add user message
       const userMsg: ChatMessage = {
@@ -100,13 +112,45 @@ export function useChat(chatId: number | null) {
       setLocalMessages((prev) => [...prev, userMsg]);
 
       try {
-        await sendChatMessage(chatId, prompt);
+        if (isStreaming) {
+          setQueuedPrompts((prev) => [...prev, prompt]);
+          return;
+        }
+        await sendChatMessage(chatId, prompt, { attachments });
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
     },
-    [chatId],
+    [chatId, isStreaming],
   );
+
+  const retryLastMessage = useCallback(async () => {
+    if (!chatId || !lastPrompt) return;
+    try {
+      await sendChatMessage(chatId, lastPrompt, { redo: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [chatId, lastPrompt]);
+
+  const cancelStream = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      await cancelChatStream(chatId);
+      setIsStreaming(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [chatId]);
+
+  useEffect(() => {
+    if (isStreaming || queuedPrompts.length === 0 || !chatId) return;
+    const [nextPrompt, ...rest] = queuedPrompts;
+    setQueuedPrompts(rest);
+    void sendChatMessage(chatId, nextPrompt).catch((err) =>
+      setError(err instanceof Error ? err.message : String(err)),
+    );
+  }, [chatId, isStreaming, queuedPrompts]);
 
   // Merge streaming content into displayed messages
   const displayMessages = localMessages.map((msg) =>
@@ -118,6 +162,9 @@ export function useChat(chatId: number | null) {
     isStreaming,
     error,
     sendMessage,
+    cancelStream,
+    retryLastMessage,
+    queuedPrompts,
     isLoading: chatQuery.isLoading,
   };
 }
