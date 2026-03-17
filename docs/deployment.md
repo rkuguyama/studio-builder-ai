@@ -42,6 +42,7 @@ docker compose up -d
 ```
 
 The app will be available at `http://localhost` (port 80).
+Use an external reverse proxy / load balancer for HTTPS termination on 443.
 
 ## TLS with nginx (Bare Metal)
 
@@ -203,7 +204,7 @@ Environment=DYAD_WEB_BRIDGE_HOST=127.0.0.1
 Environment=DYAD_RATE_LIMIT_PER_MINUTE=200
 
 ExecStartPre=/usr/bin/Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &
-ExecStart=/opt/studio/studio-ai-builder --no-sandbox --disable-gpu --disable-software-rasterizer
+ExecStart=/opt/studio/dyad --no-sandbox --disable-gpu --disable-software-rasterizer
 Restart=on-failure
 RestartSec=5
 

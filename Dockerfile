@@ -80,7 +80,7 @@ ENV DYAD_HEADLESS=1 \
     DYAD_RATE_LIMIT_PER_MINUTE=200 \
     DISPLAY=:99
 
-EXPOSE 80 443
+EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -sf http://localhost:4310/health || exit 1

@@ -32,10 +32,10 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Runtime config: replace this script block at deploy time via nginx sub_filter
-         or a templating step so the app picks up the correct bridge URL/token.
-         Example: window.__RUNTIME_CONFIG__ = { BRIDGE_URL: "https://api.example.com" }; -->
-    <script>window.__RUNTIME_CONFIG__ = window.__RUNTIME_CONFIG__ || {};</script>
+    <script src="/runtime-config.js"></script>
+    <script>
+      window.__RUNTIME_CONFIG__ = window.__RUNTIME_CONFIG__ || {};
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

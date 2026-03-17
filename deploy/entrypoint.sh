@@ -3,13 +3,10 @@ set -euo pipefail
 
 echo "==> Starting Studio AI Builder (headless)"
 
-# Inject runtime config into the web studio index.html
-# This replaces the empty __RUNTIME_CONFIG__ with the actual bridge URL/token
-BRIDGE_URL="${BRIDGE_URL:-http://localhost:4310}"
-BRIDGE_TOKEN="${DYAD_WEB_BRIDGE_TOKEN:-}"
-
-CONFIG_JS="window.__RUNTIME_CONFIG__ = { BRIDGE_URL: \"${BRIDGE_URL}\", BRIDGE_TOKEN: \"${BRIDGE_TOKEN}\" };"
-sed -i "s|window.__RUNTIME_CONFIG__ = window.__RUNTIME_CONFIG__ || {};|${CONFIG_JS}|g" /data/web-studio/index.html
+# Generate runtime config as a separate JS file.
+# This avoids brittle sed replacements and safely handles special characters.
+RUNTIME_CONFIG_JSON="$(node -e 'const cfg={BRIDGE_URL:process.env.BRIDGE_URL||\"http://localhost:4310\",BRIDGE_TOKEN:process.env.DYAD_WEB_BRIDGE_TOKEN||\"\"}; process.stdout.write(JSON.stringify(cfg));')"
+printf 'window.__RUNTIME_CONFIG__ = %s;\n' "$RUNTIME_CONFIG_JSON" > /data/web-studio/runtime-config.js
 
 # Ensure data directories exist
 mkdir -p "$DYAD_DATA_DIR" "$DYAD_APPS_DIR"
