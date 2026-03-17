@@ -36,6 +36,10 @@ export async function createApp(
   return invokeChannel<{ app: App; chatId: number }>("create-app", { name });
 }
 
+export async function deleteApp(appId: number): Promise<void> {
+  await invokeChannel<void>("delete-app", { appId });
+}
+
 export async function runApp(appId: number): Promise<void> {
   await invokeChannel<void>("run-app", { appId });
 }

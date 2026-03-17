@@ -1,8 +1,9 @@
 import * as React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createApp, getApp, listApps, sendChatMessage } from "../api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createApp, deleteApp, getApp, getChats, listApps, runApp, sendChatMessage } from "../api";
 import { ChatPanel } from "./ChatPanel";
 import { WorkspacePanel } from "./WorkspacePanel";
+import { useEventListener } from "../hooks/useEventStream";
 
 interface AppBuilderProps {
   appId: number | null;
@@ -52,6 +53,44 @@ export function AppBuilder({ appId, chatId, onSessionChange, onNewProject }: App
     refetchInterval: 10000,
   });
 
+  // Auto-fetch chats when appId is set but chatId is missing (e.g. sidebar switch)
+  const chatsQuery = useQuery({
+    queryKey: ["chats-for-app", currentAppId],
+    queryFn: () => getChats(currentAppId!),
+    enabled: currentAppId !== null && (currentChatId === null || currentChatId === 0),
+  });
+
+  React.useEffect(() => {
+    if (!chatsQuery.data || chatsQuery.data.length === 0) return;
+    if (currentChatId !== null && currentChatId !== 0) return;
+    const firstChat = chatsQuery.data[0];
+    setCurrentChatId(firstChat.id);
+    if (currentAppId !== null) {
+      onSessionChange?.(currentAppId, firstChat.id);
+    }
+  }, [chatsQuery.data, currentChatId, currentAppId, onSessionChange]);
+
+  // Auto-run the app when the AI finishes writing code
+  useEventListener("chat:response:end", (payload) => {
+    const data = payload as { chatId: number; updatedFiles: boolean };
+    if (data.chatId !== currentChatId) return;
+    if (data.updatedFiles && currentAppId) {
+      runApp(currentAppId).catch(() => {});
+    }
+  });
+
+  const deleteAppMutation = useMutation({
+    mutationFn: (appIdToDelete: number) => deleteApp(appIdToDelete),
+    onSuccess: (_data, appIdDeleted) => {
+      queryClient.invalidateQueries({ queryKey: ["apps-list"] });
+      if (appIdDeleted === currentAppId) {
+        setCurrentAppId(null);
+        setCurrentChatId(null);
+        onNewProject?.();
+      }
+    },
+  });
+
   const startFromPrompt = React.useCallback(
     async (prompt: string) => {
       setStartupError(null);
@@ -60,12 +99,14 @@ export function AppBuilder({ appId, chatId, onSessionChange, onNewProject }: App
         const result = await createApp(createAppNameFromPrompt(prompt));
         setCurrentAppId(result.app.id);
         setCurrentChatId(result.chatId);
-        onSessionChange?.(result.app.id, result.chatId);
         queryClient.invalidateQueries({ queryKey: ["apps-list"] });
 
         setBootstrapPhase("prompting");
         await sendChatMessage(result.chatId, prompt);
         setBootstrapPhase("done");
+
+        // Navigate AFTER bootstrap completes so we don't unmount mid-stream
+        onSessionChange?.(result.app.id, result.chatId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setStartupError(message);
@@ -134,23 +175,40 @@ export function AppBuilder({ appId, chatId, onSessionChange, onNewProject }: App
                 <div style={styles.sidebarEmpty}>Loading...</div>
               )}
               {sortedApps.map((app) => (
-                <button
+                <div
                   key={app.id}
-                  type="button"
                   style={{
                     ...styles.sidebarItem,
                     ...(app.id === currentAppId ? styles.sidebarItemActive : {}),
                   }}
-                  onClick={() => {
-                    if (app.id === currentAppId) return;
-                    onSessionChange?.(app.id, 0);
-                  }}
                 >
-                  <div style={styles.sidebarItemName}>{app.name}</div>
-                  <div style={styles.sidebarItemDate}>
-                    {new Date(app.createdAt).toLocaleDateString()}
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    style={styles.sidebarItemButton}
+                    onClick={() => {
+                      if (app.id === currentAppId) return;
+                      setCurrentAppId(app.id);
+                      setCurrentChatId(null);
+                    }}
+                  >
+                    <div style={styles.sidebarItemName}>{app.name}</div>
+                    <div style={styles.sidebarItemDate}>
+                      {new Date(app.createdAt).toLocaleDateString()}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.deleteButton}
+                    title="Delete project"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!window.confirm(`Delete project "${app.name}"?`)) return;
+                      deleteAppMutation.mutate(app.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -301,19 +359,29 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sidebarItem: {
     display: "flex",
-    flexDirection: "column" as const,
-    textAlign: "left" as const,
-    padding: "0.5rem 0.6rem",
+    alignItems: "center",
     borderRadius: 6,
     border: "1px solid transparent",
     backgroundColor: "transparent",
     color: "#e6edf3",
-    cursor: "pointer",
     transition: "background-color 0.15s",
+    position: "relative" as const,
   },
   sidebarItemActive: {
     backgroundColor: "#0f2547",
     borderColor: "#1f6feb",
+  },
+  sidebarItemButton: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column" as const,
+    textAlign: "left" as const,
+    padding: "0.5rem 0.6rem",
+    background: "none",
+    border: "none",
+    color: "inherit",
+    cursor: "pointer",
+    minWidth: 0,
   },
   sidebarItemName: {
     fontSize: 13,
@@ -326,6 +394,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     color: "#484f58",
     marginTop: 2,
+  },
+  deleteButton: {
+    background: "none",
+    border: "none",
+    color: "#484f58",
+    cursor: "pointer",
+    fontSize: 16,
+    padding: "0.3rem 0.5rem",
+    borderRadius: 4,
+    lineHeight: 1,
+    flexShrink: 0,
   },
   panels: {
     display: "flex",
