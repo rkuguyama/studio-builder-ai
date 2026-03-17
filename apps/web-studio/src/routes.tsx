@@ -7,8 +7,6 @@ import {
   useParams,
   useNavigate,
 } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { healthCheck } from "./api";
 import { useEventStreamConnection } from "./hooks/useEventStream";
 import { AppBuilder } from "./components/AppBuilder";
 import { SettingsPage } from "./components/SettingsPage";
@@ -28,35 +26,20 @@ const rootRoute = createRootRoute({
 
 function StudioPage() {
   const navigate = useNavigate();
-  const health = useQuery({
-    queryKey: ["bridge-health"],
-    queryFn: healthCheck,
-    refetchInterval: 5000,
-  });
 
   return (
-    <main style={styles.page}>
-      <p style={styles.status}>
-        Bridge:{" "}
-        {health.data ? (
-          <span style={{ color: "#3fb950" }}>online</span>
-        ) : (
-          <span style={{ color: "#f85149" }}>offline</span>
-        )}
-      </p>
-      <AppBuilder
-        appId={null}
-        chatId={null}
-        onSessionChange={(appId, chatId) => {
-          navigate({
-            to: "/app/$appId",
-            params: { appId: String(appId) },
-            search: { chatId: String(chatId) },
-          });
-        }}
-        onNewProject={() => navigate({ to: "/" })}
-      />
-    </main>
+    <AppBuilder
+      appId={null}
+      chatId={null}
+      onSessionChange={(appId, chatId) => {
+        navigate({
+          to: "/app/$appId",
+          params: { appId: String(appId) },
+          search: { chatId: String(chatId) },
+        });
+      }}
+      onNewProject={() => navigate({ to: "/" })}
+    />
   );
 }
 
@@ -77,6 +60,13 @@ function AppBuilderPage() {
     <AppBuilder
       appId={Number.isFinite(parsedAppId) ? parsedAppId : null}
       chatId={chatId}
+      onSessionChange={(newAppId, newChatId) => {
+        navigate({
+          to: "/app/$appId",
+          params: { appId: String(newAppId) },
+          search: { chatId: String(newChatId) },
+        });
+      }}
       onNewProject={() => navigate({ to: "/" })}
     />
   );
@@ -114,22 +104,3 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    margin: 0,
-    backgroundColor: "#0d1117",
-    color: "#e6edf3",
-    minHeight: "100vh",
-  },
-  status: {
-    margin: 0,
-    padding: "0.5rem 1rem",
-    fontSize: 14,
-    borderBottom: "1px solid #30363d",
-    backgroundColor: "#161b22",
-  },
-};

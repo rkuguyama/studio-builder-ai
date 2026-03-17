@@ -269,11 +269,14 @@ const cardStyles: Record<string, React.CSSProperties> = {
   },
 };
 
+type BootstrapPhase = "idle" | "creating" | "prompting" | "done";
+
 interface ChatPanelProps {
   appId: number | null;
   chatId: number | null;
   onSubmitWithoutChat?: (prompt: string) => Promise<void>;
   onNewProject?: () => void;
+  bootstrapPhase?: BootstrapPhase;
 }
 
 export function ChatPanel({
@@ -281,6 +284,7 @@ export function ChatPanel({
   chatId,
   onSubmitWithoutChat,
   onNewProject,
+  bootstrapPhase = "idle",
 }: ChatPanelProps) {
   const queryClient = useQueryClient();
   const {
@@ -295,7 +299,7 @@ export function ChatPanel({
   } =
     useChat(chatId);
   const [input, setInput] = React.useState("");
-  const [isBootstrapping, setIsBootstrapping] = React.useState(false);
+  const [pendingPrompt, setPendingPrompt] = React.useState<string | null>(null);
   const [bootstrapError, setBootstrapError] = React.useState<string | null>(null);
   const [showModelSettings, setShowModelSettings] = React.useState(false);
   const [editingProviderId, setEditingProviderId] = React.useState<string | null>(
@@ -306,6 +310,7 @@ export function ChatPanel({
     [],
   );
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const isBootstrapping = bootstrapPhase === "creating" || bootstrapPhase === "prompting";
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings.user,
@@ -385,6 +390,12 @@ export function ChatPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
+  React.useEffect(() => {
+    if (bootstrapPhase === "done" || (chatId && messages.length > 0)) {
+      setPendingPrompt(null);
+    }
+  }, [bootstrapPhase, chatId, messages.length]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
@@ -397,13 +408,12 @@ export function ChatPanel({
     }
     if (!onSubmitWithoutChat) return;
     setBootstrapError(null);
-    setIsBootstrapping(true);
+    setPendingPrompt(trimmed);
     void onSubmitWithoutChat(trimmed)
       .catch((err) =>
         setBootstrapError(err instanceof Error ? err.message : String(err)),
       )
       .finally(() => {
-        setIsBootstrapping(false);
         setAttachments([]);
       });
   };
@@ -489,16 +499,41 @@ export function ChatPanel({
         </div>
       </div>
       <div style={styles.messageList}>
-        {!chatId && (
+        {!chatId && !pendingPrompt && (
           <div style={styles.welcomeCard}>
-            <div style={styles.welcomeTitle}>Start by prompting</div>
+            <div style={styles.welcomeTitle}>What do you want to build?</div>
             <div style={styles.welcomeBody}>
-              Describe what you want to build. A new app is created from your
-              prompt automatically.
+              Describe your app and the AI will create the project, write the code,
+              and show you a live preview.
+            </div>
+            <div style={styles.welcomeHints}>
+              <span style={styles.hintChip}>A stock management app</span>
+              <span style={styles.hintChip}>A todo list with dark theme</span>
+              <span style={styles.hintChip}>A dashboard with charts</span>
             </div>
           </div>
         )}
         {isLoading && <p style={styles.status}>Loading messages...</p>}
+
+        {pendingPrompt && messages.length === 0 && (
+          <div
+            style={{ ...styles.messageBubble, ...styles.userBubble }}
+          >
+            <div style={styles.role}>You</div>
+            <div style={styles.content}>{pendingPrompt}</div>
+          </div>
+        )}
+
+        {pendingPrompt && messages.length === 0 && (
+          <div style={styles.statusBanner}>
+            <div style={styles.statusDot} />
+            <span>
+              {bootstrapPhase === "creating" && "Creating project..."}
+              {bootstrapPhase === "prompting" && "Sending prompt to AI..."}
+              {bootstrapPhase === "idle" && "Preparing..."}
+            </span>
+          </div>
+        )}
 
         {messages.map((msg, idx) => (
           <div
@@ -527,11 +562,9 @@ export function ChatPanel({
         ))}
 
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-          <div style={{ ...styles.messageBubble, ...styles.assistantBubble }}>
-            <div style={styles.role}>Assistant</div>
-            <div style={styles.content}>
-              <span style={styles.cursor}>|</span>
-            </div>
+          <div style={styles.statusBanner}>
+            <div style={styles.statusDot} />
+            <span>AI is generating code...</span>
           </div>
         )}
 
@@ -678,7 +711,7 @@ export function ChatPanel({
 
       <form onSubmit={handleSubmit} style={styles.inputArea}>
         <label style={styles.attachButton}>
-          Attach
+          +
           <input
             type="file"
             multiple
@@ -690,31 +723,36 @@ export function ChatPanel({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Describe what you want to build..."
+          placeholder={chatId ? "Ask a follow-up..." : "Describe what you want to build..."}
           disabled={isStreaming || isBootstrapping}
           style={styles.input}
         />
-        <button
-          type="submit"
-          disabled={isStreaming || isBootstrapping || !input.trim()}
-          style={styles.sendButton}
-        >
-          {isBootstrapping ? "Starting..." : isStreaming ? "..." : "Send"}
-        </button>
-        {isStreaming && (
+        {isStreaming ? (
           <button
             type="button"
             onClick={() => cancelStream()}
-            style={styles.secondaryButton}
+            style={styles.stopButton}
           >
-            Cancel
+            Stop
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={isBootstrapping || !input.trim()}
+            style={{
+              ...styles.sendButton,
+              ...(isBootstrapping || !input.trim() ? styles.sendButtonDisabled : {}),
+            }}
+          >
+            {isBootstrapping ? "Creating..." : "Send"}
           </button>
         )}
-        {!isStreaming && (
+        {!isStreaming && messages.length > 0 && (
           <button
             type="button"
             onClick={() => retryLastMessage()}
             style={styles.secondaryButton}
+            title="Retry last message"
           >
             Retry
           </button>
@@ -827,18 +865,51 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #30363d",
     borderRadius: 12,
     backgroundColor: "#161b22",
-    padding: "0.875rem",
+    padding: "1.25rem",
   },
   welcomeTitle: {
     fontWeight: 700,
-    fontSize: 14,
-    color: "#58a6ff",
-    marginBottom: 4,
+    fontSize: 16,
+    color: "#e6edf3",
+    marginBottom: 6,
   },
   welcomeBody: {
     fontSize: 13,
     color: "#8b949e",
-    lineHeight: 1.4,
+    lineHeight: 1.5,
+    marginBottom: 12,
+  },
+  welcomeHints: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: "0.4rem",
+  },
+  hintChip: {
+    fontSize: 11,
+    color: "#58a6ff",
+    border: "1px solid #1f6feb33",
+    borderRadius: 999,
+    padding: "0.2rem 0.6rem",
+    backgroundColor: "#0d1117",
+  },
+  statusBanner: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.6rem 0.75rem",
+    borderRadius: 8,
+    backgroundColor: "#161b22",
+    border: "1px solid #30363d",
+    fontSize: 13,
+    color: "#8b949e",
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    backgroundColor: "#f0883e",
+    animation: "pulse 1.5s ease-in-out infinite",
+    flexShrink: 0,
   },
   inputArea: {
     display: "flex",
@@ -1005,6 +1076,20 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#238636",
     color: "#fff",
     fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  sendButtonDisabled: {
+    opacity: 0.4,
+    cursor: "default",
+  },
+  stopButton: {
+    padding: "0.625rem 1rem",
+    borderRadius: 8,
+    border: "1px solid #da3633",
+    backgroundColor: "#21262d",
+    color: "#f85149",
+    fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
   },
