@@ -25,6 +25,39 @@ const IS_HEADLESS =
   process.env.DYAD_HEADLESS === "true";
 
 /**
+ * Rewrite absolute paths in HTML so that sub-resources load through the
+ * preview proxy (/preview/{appId}/...) instead of the server root.
+ *
+ * Without this, Vite's `<script src="/src/main.tsx">` resolves to
+ * `http://server/src/main.tsx` which nginx serves as the SPA, producing
+ * a blank iframe.
+ */
+function rewriteHtmlPaths(html: string, appId: number): string {
+  const prefix = `/preview/${appId}`;
+
+  // src="/...", href="/...", action="/...", poster="/...", data="/..."
+  // Negative lookahead avoids double-rewriting and protocol-relative URLs.
+  let result = html.replace(
+    /((?:src|href|action|poster|data)\s*=\s*)(["'])(\/(?!\/|preview\/)[^"']*)\2/gi,
+    (_m, attr: string, q: string, p: string) => `${attr}${q}${prefix}${p}${q}`,
+  );
+
+  // ES module: from "/..."
+  result = result.replace(
+    /(from\s+)(["'])(\/(?!\/|preview\/)[^"']*)\2/g,
+    (_m, kw: string, q: string, p: string) => `${kw}${q}${prefix}${p}${q}`,
+  );
+
+  // Dynamic import: import("/...")
+  result = result.replace(
+    /(import\s*\(\s*)(["'])(\/(?!\/|preview\/)[^"']*)\2/g,
+    (_m, kw: string, q: string, p: string) => `${kw}${q}${prefix}${p}${q}`,
+  );
+
+  return result;
+}
+
+/**
  * Resolve the upstream target for a running app.
  *
  * In headless/SaaS mode the proxy worker's script injection (desktop shim,
@@ -79,22 +112,54 @@ function proxyHttpTo(
   appId: number,
   subPath: string,
 ): void {
+  const reqHeaders: Record<string, string | string[] | undefined> = {
+    ...req.headers,
+    host: `${target.hostname}:${target.port}`,
+  };
+
+  // In headless mode we may rewrite HTML, so request uncompressed content.
+  if (IS_HEADLESS) {
+    delete reqHeaders["accept-encoding"];
+    delete reqHeaders["if-none-match"];
+  }
+
   const proxyReq = http.request(
     {
       hostname: target.hostname,
       port: target.port,
       path: subPath,
       method: req.method,
-      headers: {
-        ...req.headers,
-        host: `${target.hostname}:${target.port}`,
-      },
+      headers: reqHeaders,
     },
     (proxyRes) => {
       const location = proxyRes.headers.location;
       if (location && location.startsWith("/")) {
         proxyRes.headers.location = `/preview/${appId}${location}`;
       }
+
+      const ct = proxyRes.headers["content-type"] ?? "";
+      const isHtml =
+        typeof ct === "string" && ct.toLowerCase().includes("text/html");
+
+      if (IS_HEADLESS && isHtml) {
+        const chunks: Buffer[] = [];
+        proxyRes.on("data", (c: Buffer) => chunks.push(c));
+        proxyRes.on("end", () => {
+          const original = Buffer.concat(chunks).toString("utf-8");
+          const rewritten = rewriteHtmlPaths(original, appId);
+          const buf = Buffer.from(rewritten, "utf-8");
+
+          const hdrs = { ...proxyRes.headers };
+          hdrs["content-length"] = String(Buffer.byteLength(buf));
+          delete hdrs["content-encoding"];
+          delete hdrs["etag"];
+
+          res.writeHead(proxyRes.statusCode ?? 200, hdrs);
+          res.end(buf);
+        });
+        return;
+      }
+
       res.writeHead(proxyRes.statusCode ?? 200, proxyRes.headers);
       proxyRes.pipe(res, { end: true });
     },

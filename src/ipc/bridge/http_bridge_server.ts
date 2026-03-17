@@ -106,15 +106,12 @@ export function startHttpBridgeServer(options: BridgeServerOptions) {
 
       if (!rateLimiter.check(request, response)) return;
 
-      // Preview proxy — check before auth to allow iframe loads with
-      // the token baked into a cookie or query param if needed later.
-      // For now we still require auth.
+      // Preview proxy — serve user-generated app previews in a sandboxed iframe.
+      // Auth is skipped because sub-resource requests (scripts, CSS, images,
+      // ES module imports) from within the iframe don't carry the auth token.
+      // The initial iframe URL is only known to authenticated web-studio users.
       const preview = parsePreviewPath(url);
       if (preview) {
-        if (!isAuthorized(request, options.authToken)) {
-          sendJson(response, 401, { ok: false, error: "Unauthorized" });
-          return;
-        }
         handlePreviewRequest(request, response, preview.appId, preview.subPath);
         return;
       }
@@ -176,15 +173,11 @@ export function startHttpBridgeServer(options: BridgeServerOptions) {
     }
   });
 
-  // WebSocket upgrade for preview HMR
+  // WebSocket upgrade for preview HMR — auth is skipped for the same
+  // reason as HTTP preview: the iframe's sub-resource requests don't carry tokens.
   server.on("upgrade", (request, socket, head) => {
     const preview = parsePreviewPath(request.url ?? "/");
     if (!preview) {
-      socket.destroy();
-      return;
-    }
-
-    if (!isAuthorized(request, options.authToken)) {
       socket.destroy();
       return;
     }
