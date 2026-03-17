@@ -42,8 +42,11 @@ export function useChat(chatId: number | null) {
 
   const chatQuery = useQuery({
     queryKey: queryKeys.chat.detail(chatId),
-    queryFn: () => getChat(chatId!),
-    enabled: chatId !== null,
+    queryFn: () => {
+      if (chatId === null) throw new Error("chatId is null");
+      return getChat(chatId);
+    },
+    enabled: chatId !== null && chatId > 0,
   });
 
   // Track messages locally so streaming updates appear immediately

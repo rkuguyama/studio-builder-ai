@@ -67,9 +67,16 @@ function AppBuilderPage() {
   const { appId } = useParams({ from: "/app/$appId" });
   const searchParams = new URLSearchParams(window.location.search);
   const chatIdParam = searchParams.get("chatId");
-  const chatId = chatIdParam ? Number(chatIdParam) : null;
+  const parsedChatId = chatIdParam ? Number(chatIdParam) : null;
+  const chatId = parsedChatId !== null && Number.isFinite(parsedChatId) ? parsedChatId : null;
+  const parsedAppId = Number(appId);
 
-  return <AppBuilder appId={Number(appId)} chatId={chatId} />;
+  return (
+    <AppBuilder
+      appId={Number.isFinite(parsedAppId) ? parsedAppId : null}
+      chatId={chatId}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------

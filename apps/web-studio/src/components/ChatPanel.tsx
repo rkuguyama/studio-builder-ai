@@ -78,10 +78,13 @@ export function ChatPanel({
   });
 
   const proposalQuery = useQuery({
-    queryKey: chatId ? queryKeys.chat.proposal(chatId) : ["chat-proposal", null],
-    queryFn: () => getProposal(chatId!),
-    enabled: chatId !== null,
-    refetchInterval: 2500,
+    queryKey: chatId !== null ? queryKeys.chat.proposal(chatId) : ["chat-proposal-disabled"],
+    queryFn: () => {
+      if (chatId === null) throw new Error("chatId is null");
+      return getProposal(chatId);
+    },
+    enabled: chatId !== null && chatId > 0,
+    refetchInterval: chatId !== null ? 2500 : false,
   });
 
   const selectedProviderId = settingsQuery.data?.selectedModel.provider;
