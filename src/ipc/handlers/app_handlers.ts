@@ -1049,9 +1049,10 @@ export function registerAppHandlers() {
         originalUrl: null,
       };
     }
+    const hasPreview = !!(appInfo.proxyUrl || appInfo.originalUrl);
     return {
       running: true,
-      previewPath: appInfo.proxyUrl ? `/preview/${appId}/` : null,
+      previewPath: hasPreview ? `/preview/${appId}/` : null,
       proxyUrl: appInfo.proxyUrl ?? null,
       originalUrl: appInfo.originalUrl ?? null,
     };
