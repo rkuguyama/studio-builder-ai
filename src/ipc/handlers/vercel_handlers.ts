@@ -447,12 +447,12 @@ async function handleGetVercelDeployments(
     const settings = readSettings();
     const accessToken = settings.vercelAccessToken?.value;
     if (!accessToken) {
-      throw new Error("Not authenticated with Vercel.");
+      return [];
     }
 
     const app = await db.query.apps.findFirst({ where: eq(apps.id, appId) });
     if (!app || !app.vercelProjectId) {
-      throw new Error("App is not linked to a Vercel project.");
+      return [];
     }
 
     logger.info(

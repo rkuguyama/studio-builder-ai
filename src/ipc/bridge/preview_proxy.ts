@@ -2,6 +2,7 @@ import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import net from "node:net";
 import log from "electron-log";
 import { runningApps } from "../utils/process_manager";
+import { isProxyWorkerDead, markProxyWorkerDead } from "./proxy_worker_state";
 
 const logger = log.scope("preview_proxy");
 
@@ -25,21 +26,26 @@ function urlToTarget(raw: string): UpstreamTarget | null {
  * dev server (originalUrl) so that preview still works when the proxy
  * worker crashes — which is common in headless/Docker/SaaS deployments
  * where the desktop-specific script injection isn't needed.
+ *
+ * If the proxy worker has been flagged as dead for this app, skips it
+ * entirely and goes straight to originalUrl.
  */
 function resolveTarget(appId: number): UpstreamTarget | null {
   const appInfo = runningApps.get(appId);
   if (!appInfo) return null;
 
-  if (appInfo.proxyUrl) {
+  if (appInfo.proxyUrl && !isProxyWorkerDead(appId)) {
     const t = urlToTarget(appInfo.proxyUrl);
     if (t) return t;
     logger.error(`Invalid proxyUrl for app ${appId}: ${appInfo.proxyUrl}`);
   }
 
   if (appInfo.originalUrl) {
-    logger.info(
-      `Falling back to originalUrl for app ${appId}: ${appInfo.originalUrl}`,
-    );
+    if (!isProxyWorkerDead(appId) && appInfo.proxyUrl) {
+      logger.info(
+        `Falling back to originalUrl for app ${appId}: ${appInfo.originalUrl}`,
+      );
+    }
     const t = urlToTarget(appInfo.originalUrl);
     if (t) return t;
     logger.error(
@@ -95,18 +101,19 @@ function proxyHttpTo(
   proxyReq.on("error", (err) => {
     logger.error(`Preview proxy error for app ${appId}:`, err.message);
 
-    // If the proxy worker failed, try falling back to the original dev server
     const appInfo = runningApps.get(appId);
     if (
       appInfo?.originalUrl &&
       appInfo.proxyUrl &&
       target.port !== (urlToTarget(appInfo.originalUrl)?.port ?? -1)
     ) {
+      markProxyWorkerDead(appId);
+      logger.info(
+        `Proxy worker for app ${appId} flagged as dead — switching to originalUrl for all future requests`,
+      );
+
       const fallback = urlToTarget(appInfo.originalUrl);
       if (fallback && !res.headersSent) {
-        logger.info(
-          `Retrying preview for app ${appId} via originalUrl: ${appInfo.originalUrl}`,
-        );
         proxyHttpTo(fallback, req, res, appId, subPath);
         return;
       }
@@ -185,6 +192,8 @@ function upgradeToTarget(
       appInfo.proxyUrl &&
       target.port !== (urlToTarget(appInfo.originalUrl)?.port ?? -1)
     ) {
+      markProxyWorkerDead(appId);
+
       const fallback = urlToTarget(appInfo.originalUrl);
       if (fallback && !clientSocket.destroyed) {
         logger.info(

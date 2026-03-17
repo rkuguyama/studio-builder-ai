@@ -20,11 +20,14 @@ export async function invokeChannel<T>(
     body: JSON.stringify({ channel, input }),
   });
 
-  const data = (await response.json()) as {
-    ok: boolean;
-    result?: T;
-    error?: string;
-  };
+  let data: { ok: boolean; result?: T; error?: string };
+  try {
+    data = (await response.json()) as typeof data;
+  } catch {
+    throw new Error(
+      `Bridge returned non-JSON response (${response.status}) for ${channel}`,
+    );
+  }
 
   if (!response.ok || !data.ok) {
     throw new Error(data.error ?? `Invoke failed for ${channel}`);

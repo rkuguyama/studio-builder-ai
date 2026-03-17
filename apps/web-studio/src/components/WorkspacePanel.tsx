@@ -55,7 +55,7 @@ export function WorkspacePanel({ appId, chatId }: WorkspacePanelProps) {
   const previewQuery = useQuery({
     queryKey: ["preview-url", appId],
     queryFn: () => getPreviewUrl(appId),
-    refetchInterval: 3000,
+    refetchInterval: mode === "preview" ? 3000 : false,
   });
   const problemsQuery = useQuery({
     queryKey: ["app-problems", appId],
@@ -71,6 +71,7 @@ export function WorkspacePanel({ appId, chatId }: WorkspacePanelProps) {
     queryKey: ["security-review", appId],
     queryFn: () => getLatestSecurityReview(appId),
     enabled: mode === "security",
+    retry: false,
   });
   const planQuery = useQuery({
     queryKey: ["plan-by-chat", appId, chatId],
@@ -81,6 +82,7 @@ export function WorkspacePanel({ appId, chatId }: WorkspacePanelProps) {
     queryKey: ["vercel-deployments", appId],
     queryFn: () => getVercelDeployments(appId),
     enabled: mode === "publish",
+    retry: false,
   });
   const selectedFileQuery = useQuery({
     queryKey: ["app-file", appId, selectedFile],

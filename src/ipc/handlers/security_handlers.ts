@@ -34,15 +34,11 @@ export function registerSecurityHandlers() {
         .limit(1);
 
       if (result.length === 0) {
-        throw new Error("No security review found for this app");
+        return { findings: [], timestamp: null, chatId: null };
       }
 
       const message = result[0];
       const findings = parseSecurityFindings(message.content);
-
-      if (findings.length === 0) {
-        throw new Error("No security review found for this app");
-      }
 
       return {
         findings,

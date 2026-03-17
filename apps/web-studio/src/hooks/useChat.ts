@@ -39,6 +39,7 @@ export function useChat(chatId: number | null) {
   const [queuedPrompts, setQueuedPrompts] = useState<string[]>([]);
   const chatIdRef = useRef(chatId);
   chatIdRef.current = chatId;
+  const sendingRef = useRef(false);
 
   const chatQuery = useQuery({
     queryKey: queryKeys.chat.detail(chatId),
@@ -147,12 +148,17 @@ export function useChat(chatId: number | null) {
   }, [chatId]);
 
   useEffect(() => {
-    if (isStreaming || queuedPrompts.length === 0 || !chatId) return;
+    if (isStreaming || sendingRef.current || queuedPrompts.length === 0 || !chatId) return;
     const [nextPrompt, ...rest] = queuedPrompts;
     setQueuedPrompts(rest);
-    void sendChatMessage(chatId, nextPrompt).catch((err) =>
-      setError(err instanceof Error ? err.message : String(err)),
-    );
+    sendingRef.current = true;
+    void sendChatMessage(chatId, nextPrompt)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : String(err)),
+      )
+      .finally(() => {
+        sendingRef.current = false;
+      });
   }, [chatId, isStreaming, queuedPrompts]);
 
   // Merge streaming content into displayed messages

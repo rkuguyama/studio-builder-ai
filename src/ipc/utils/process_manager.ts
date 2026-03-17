@@ -3,6 +3,7 @@ import treeKill from "tree-kill";
 import log from "electron-log";
 import type { Worker } from "node:worker_threads";
 import { withLock } from "./lock_utils";
+import { clearProxyWorkerDeadFlag } from "../bridge/proxy_worker_state";
 
 const logger = log.scope("process_manager");
 
@@ -140,6 +141,7 @@ export async function stopAppByInfo(
     await killProcess(appInfo.process);
   }
   runningApps.delete(appId);
+  clearProxyWorkerDeadFlag(appId);
 }
 
 /**
@@ -158,6 +160,7 @@ export function removeAppIfCurrentProcess(
       currentAppInfo.proxyWorker = undefined;
     }
     runningApps.delete(appId);
+    clearProxyWorkerDeadFlag(appId);
     logger.info(
       `Removed app ${appId} (processId ${currentAppInfo.processId}) from running map. Current size: ${runningApps.size}`,
     );
@@ -358,5 +361,6 @@ export function stopAllAppsSync(): void {
       logger.info(`Sent SIGTERM to app ${appId} (PID ${appInfo.process.pid})`);
     }
     runningApps.delete(appId);
+    clearProxyWorkerDeadFlag(appId);
   }
 }
