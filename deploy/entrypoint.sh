@@ -11,17 +11,48 @@ printf 'window.__RUNTIME_CONFIG__ = %s;\n' "$RUNTIME_CONFIG_JSON" > /data/web-st
 # Ensure data directories exist
 mkdir -p "$DYAD_DATA_DIR" "$DYAD_APPS_DIR"
 
-# Start Xvfb (virtual framebuffer) for Electron
-Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &
-XVFB_PID=$!
-sleep 1
+# Start Xvfb (virtual framebuffer) for Electron (idempotent)
+if ! pgrep -x Xvfb >/dev/null 2>&1; then
+  rm -f /tmp/.X99-lock
+  Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &
+  sleep 1
+fi
 
 # Start nginx to serve the web studio and reverse-proxy the bridge
 nginx
 
-# Start the Electron app in headless mode.
-# The binary name comes from package.json "name" field.
-exec /opt/studio/dyad \
+# Resolve app binary (packaging can produce different executable names)
+APP_BIN="${APP_BIN:-}"
+if [[ -z "$APP_BIN" ]]; then
+  for candidate in \
+    "/opt/studio/dyad" \
+    "/opt/studio/Studio AI Builder" \
+    "/opt/studio/studio-ai-builder"
+  do
+    if [[ -x "$candidate" ]]; then
+      APP_BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$APP_BIN" ]]; then
+  for candidate in /opt/studio/*; do
+    if [[ -f "$candidate" && -x "$candidate" ]]; then
+      APP_BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$APP_BIN" ]]; then
+  echo "ERROR: Could not find executable binary in /opt/studio"
+  ls -la /opt/studio || true
+  exit 1
+fi
+
+echo "==> Launching app binary: $APP_BIN"
+exec "$APP_BIN" \
   --no-sandbox \
   --disable-gpu \
   --disable-software-rasterizer
