@@ -25,7 +25,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run package -- --platform linux --arch x64
+RUN npm run package -- --platform linux --arch x64 && \
+    mv out/*-linux-x64 out/app
 
 # --- Stage 3: Runtime image ---
 FROM node:20-bookworm-slim
@@ -57,7 +58,7 @@ RUN mkdir -p /data/db /data/apps /data/web-studio && \
     chown -R studio:studio /data
 
 # Copy the packaged Electron app
-COPY --from=app-builder /build/out/Studio\ AI\ Builder-linux-x64/ /opt/studio/
+COPY --from=app-builder /build/out/app/ /opt/studio/
 RUN chown -R studio:studio /opt/studio
 
 # Copy web studio static build
