@@ -20,32 +20,34 @@ function urlToTarget(raw: string): UpstreamTarget | null {
   }
 }
 
+const IS_HEADLESS =
+  process.env.DYAD_HEADLESS === "1" ||
+  process.env.DYAD_HEADLESS === "true";
+
 /**
  * Resolve the upstream target for a running app.
- * Prefers the proxy worker (proxyUrl) but falls back to the original
- * dev server (originalUrl) so that preview still works when the proxy
- * worker crashes — which is common in headless/Docker/SaaS deployments
- * where the desktop-specific script injection isn't needed.
  *
- * If the proxy worker has been flagged as dead for this app, skips it
- * entirely and goes straight to originalUrl.
+ * In headless/SaaS mode the proxy worker's script injection (desktop shim,
+ * component selector, visual editor, etc.) breaks web-browser iframes, so
+ * we skip the proxy worker entirely and serve from the original dev server.
+ *
+ * In desktop mode, prefers the proxy worker (proxyUrl) but falls back to
+ * originalUrl if the worker has been flagged as dead.
  */
 function resolveTarget(appId: number): UpstreamTarget | null {
   const appInfo = runningApps.get(appId);
   if (!appInfo) return null;
 
-  if (appInfo.proxyUrl && !isProxyWorkerDead(appId)) {
+  const skipProxyWorker =
+    IS_HEADLESS || isProxyWorkerDead(appId);
+
+  if (appInfo.proxyUrl && !skipProxyWorker) {
     const t = urlToTarget(appInfo.proxyUrl);
     if (t) return t;
     logger.error(`Invalid proxyUrl for app ${appId}: ${appInfo.proxyUrl}`);
   }
 
   if (appInfo.originalUrl) {
-    if (!isProxyWorkerDead(appId) && appInfo.proxyUrl) {
-      logger.info(
-        `Falling back to originalUrl for app ${appId}: ${appInfo.originalUrl}`,
-      );
-    }
     const t = urlToTarget(appInfo.originalUrl);
     if (t) return t;
     logger.error(
